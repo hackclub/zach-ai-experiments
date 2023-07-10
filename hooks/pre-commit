@@ -1,0 +1,35 @@
+#!/bin/sh
+# Redirect output to stderr.
+exec 1>&2
+# enable user input
+exec < /dev/tty
+
+# Check if nbconvert is installed
+if command -v jupyter-nbconvert >/dev/null 2>&1; then
+    echo "Jupyter nbconvert is installed, proceeding with removing outputs from notebooks..."
+else
+    echo "Jupyter nbconvert is not installed, please install it to proceed."
+    exit 1
+fi
+
+# Find staged Python notebooks
+notebooks=$(git diff --cached --name-only --diff-filter=ACM | grep '.ipynb$')
+
+# If there are no notebooks to be committed, exit
+if [ -z "$notebooks" ]; then
+    echo "No notebooks in git staging area, nothing to do."
+    exit 0
+fi
+
+# For each notebook
+for notebook in $notebooks; do
+    # Convert the notebook to a no-output version
+    jupyter-nbconvert --ClearOutputPreprocessor.enabled=True --inplace "$notebook"
+
+    # Stage the no-output version
+    git add "$notebook"
+done
+
+# Print a status message
+echo "Outputs of the following notebooks have been cleared:"
+echo "$notebooks"
